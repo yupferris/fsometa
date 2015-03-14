@@ -3,23 +3,45 @@
 
 open FParsec
 
+type AstExpression =
+    | CharAstExpression of string * char
+
 type AstGrammar =
     {
         name : string
+        expressions : AstExpression list
     }
 
 let whitespace = spaces
-let ometa = pstring "ometa"
-let identifier' = identifier (new IdentifierOptions())
+let equals = pstring "="
+let quote = pstring "'"
+let comma = pstring ","
 let openBrace = pstring "{"
 let closeBrace = pstring "}"
+let ometa = pstring "ometa"
+let identifier' = identifier (new IdentifierOptions())
+
+let char' = quote >>. anyChar .>> quote
+
+let charExpression =
+    identifier' .>> whitespace
+    .>> equals .>> whitespace
+    .>>. char'
+    |>> CharAstExpression
+    
+let expression = charExpression
 
 let grammar =
     ometa .>> whitespace
     >>. identifier' .>> whitespace
     .>> openBrace .>> whitespace
+    .>>. (sepBy expression comma) .>> whitespace
     .>> closeBrace
-    |>> fun name -> { name = name }
+    |>> fun (name, expressions) ->
+        {
+            AstGrammar.name = name
+            expressions = expressions
+        }
 
 let compilationUnit = whitespace >>. grammar .>> whitespace
 
@@ -32,6 +54,7 @@ let test = @"
 
 ometa ExpRecognizer
 {
+    dig = '0'
 }
 
 "
